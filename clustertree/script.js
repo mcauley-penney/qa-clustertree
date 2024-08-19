@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-  const data_location = "/data/quotes.csv";
+  const data_location = `/data/cur_quotes.csv?cache-bust=${new Date().getTime()}`;
   const root_name = "GPT";
 
   d3.csv(data_location).then(function(data) {
@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function() {
           text: quote.Quote,
           parallel_categories,
         });
+
         if (quote.Related) {
           let other = quote.Related.toLowerCase().trim();
           let type = "related";
@@ -66,8 +67,33 @@ document.addEventListener("DOMContentLoaded", function() {
             other = other.substring(2);
             type = "same";
           }
+
+          // Check if the related node exists, if not, create it
+          let relatedSplit = other.split("--");
+          let relatedPrevious = "root";
+
+          for (let i = 0; i < relatedSplit.length; i++) {
+            let relatedNewname = relatedPrevious + "--" + relatedSplit[i];
+
+            if (nodesMap[relatedNewname] === undefined) {
+              let relatedText = relatedSplit[i];
+
+              nodesMap[relatedNewname] = {
+                id: relatedNewname,
+                text: relatedText,
+                quotes: [],
+              };
+              linkMap[relatedNewname] = [];
+              if (relatedPrevious !== "") {
+                nodesMap[relatedNewname].parentId = relatedPrevious;
+              }
+            }
+            relatedPrevious = relatedNewname;
+          }
+
+          let relatedName = "root--" + other;
           let res = {
-            target: "root--" + other,
+            target: relatedName,
             type,
           };
           if (!linkMap[cat].some((e) => e.target == res.target)) {
@@ -111,8 +137,8 @@ document.addEventListener("DOMContentLoaded", function() {
       };
     })();
 
-    const dx = 40; // Increase this value to add more vertical space between nodes
-    const dy = 180;
+    const dx = 60; // Increase this value to add more vertical space between nodes
+    const dy = 300;
     const margin = { top: 20, right: 120, bottom: 25, left: 40 };
     const tree = d3.tree().nodeSize([dx, dy]);
 
